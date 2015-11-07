@@ -1,3 +1,23 @@
+#cmake
+CMakeFiles
+CMakeCache.txt
+
+#visual studio
+*.sdf
+*.opensdf
+
 phrix
 
-.o
+
+#built
+Debug
+Release
+*.lib
+*.exe
+*.pbd
+*.o
+*.dir
+x64
+Win32
+
+

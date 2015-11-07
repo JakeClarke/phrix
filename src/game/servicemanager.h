@@ -14,7 +14,7 @@ class Service {
   friend class ServiceManager;
 
  public:
-  virtual ~Service();
+	 virtual ~Service() {};
 
  protected:
   virtual void start() {}

@@ -5,6 +5,8 @@
 
 using namespace phrix::game;
 
+int maxJobs = 1024;
+
 JobManager::JobManager(int maxThreads, int minThreads)
     : maxThreads(maxThreads),
       minThreads(minThreads),
@@ -12,7 +14,8 @@ JobManager::JobManager(int maxThreads, int minThreads)
       started(false),
       exiting(false),
       pending(0),
-      processing(false) {}
+      processing(false),
+		queuedJobs(0) {}
 
 JobManager::JobManager(int maxThreads)
     : maxThreads(maxThreads),
@@ -21,16 +24,26 @@ JobManager::JobManager(int maxThreads)
       started(false),
       exiting(false),
       pending(0),
-      processing(false) {}
+      processing(false),
+	  queuedJobs(0){}
 
 void JobManager::sched(std::unique_ptr<Job>& job) {
   assert(job);
   std::unique_lock<std::mutex> jl(jobQueueMutex);
-  if (job->locked) {
-    lockedJobQueue.emplace(std::move(job));
-  } else {
-    jobQueue.emplace(std::move(job));
+  if (queuedJobs < maxJobs)
+  {
+	  queuedJobs++;
+	  if (job->locked) {
+		  lockedJobQueue.emplace(std::move(job));
+	  }
+	  else {
+		  jobQueue.emplace(std::move(job));
+	  }
   }
+  else {
+	  std::cerr << "too many jobs. dropping job." << std::endl;
+  }
+
 }
 
 void JobManager::start() {
@@ -140,10 +153,12 @@ std::unique_ptr<Job> JobManager::popJob() {
     if (!lockedJobQueue.empty()) {  // frame locked jobs second.
       res = std::move(lockedJobQueue.front());
       lockedJobQueue.pop();
+	  --queuedJobs;
       return res;
     } else if (!jobQueue.empty()) {  // long jobs next.
       res = std::move(jobQueue.front());
       jobQueue.pop();
+	  --queuedJobs;
       return res;
     } else {
       std::this_thread::yield();

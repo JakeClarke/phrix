@@ -16,13 +16,15 @@ class JobManager;
 
 class Job {
   friend class JobManager;
-
+public:
+	virtual ~Job() {}
  protected:
   Job() : locked(true) {}
   Job(bool locked) : locked(locked) {}
 
   virtual void run() = 0;
   void addDependancy(Job *);
+  
  private:
  	JobManager * parent;
  	void signalDependant();
@@ -76,6 +78,8 @@ class JobManager {
   bool started;
   bool exiting;
   std::atomic<bool> processing;
+
+  int queuedJobs;
 };
 }
 }

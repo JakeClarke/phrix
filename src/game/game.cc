@@ -1,7 +1,8 @@
 #include "game.h"
 
 #include <iostream>
-#include <SDL.h>
+#include "SDL.h"
+#include "../graphics/graphics.h"
 
 using namespace phrix::game;
 
@@ -55,37 +56,17 @@ void Game::run() {
     return;
   }
 
-  SDL_Window *window;
+  SDL_version compiled;
+  SDL_version linked;
 
-  {
-    window = SDL_CreateWindow("phrix",                  // window title
-                              SDL_WINDOWPOS_UNDEFINED,  // initial x position
-                              SDL_WINDOWPOS_UNDEFINED,  // initial y position
-                              800,                      // width, in pixels
-                              600,                      // height, in pixels
-                              0);
-  }
+  SDL_VERSION(&compiled);
+  std::cout << "SDL compiled version" << compiled.major << "." << compiled.minor << "." << compiled.patch << std::endl;
+  SDL_GetVersion(&linked);
+  std::cout << "SDL linked version" << linked.major << "." << linked.minor << "." << linked.patch << std::endl;
 
-  if (window == nullptr) {
-    std::cerr << "Could not create window: %s\n" << SDL_GetError() << std::endl;
-    return;
-  }
 
-  SDL_Renderer *render =
-      SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-  if (render == nullptr) {
-    std::cerr
-        << "Failed to create hardware renderer: SDL_CreateRenderer Error: "
-        << SDL_GetError() << std::endl;
-    std::cerr << "Falling back to software rendering..." << std::endl;
-
-    render = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-    if (render == nullptr) {
-      std::cerr << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
-      std::cerr << "Failed to create any renderer." << std::endl;
-      return;
-    }
-  }
+  auto  renderer = phrix::graphics::renderer::getRenderer();
+  renderer->init();
 
   while (!exiting) {
     std::cout << "frame start" << std::endl;
@@ -101,8 +82,6 @@ void Game::run() {
     jobManager.sched(j);
     j = std::unique_ptr<Job>(new testJob());
     jobManager.sched(j);
-    j = std::unique_ptr<Job>(new longJob());
-    jobManager.sched(j);
     j = std::unique_ptr<Job>(new testJob());
     jobManager.sched(j);
     j = std::unique_ptr<Job>(new longJob());
@@ -110,10 +89,13 @@ void Game::run() {
     j = std::unique_ptr<Job>(new testJob());
     jobManager.sched(j);
     jobManager.wait();
-    SDL_RenderClear(render);
+
+
+	graphics::Color c = {1.0f,0,0,0 };
+	renderer->clear(c);
     // do the rendering.
-    SDL_RenderPresent(render);
     std::cout << "frame end" << std::endl;
+	renderer->present();
   }
 
   std::cout << "GameRun exit" << std::endl;
