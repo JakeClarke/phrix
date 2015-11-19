@@ -14,6 +14,8 @@ namespace phrix {
 					virtual std::unique_ptr<RendererContext> getContext(RendererContextType) override;
 					virtual void present() override;
 					virtual void clear(Color c) override;
+				private:
+					void loadContent();
 				};
 
 				Renderer* getRenderer();

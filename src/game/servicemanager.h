@@ -18,6 +18,7 @@ class Service {
 
  protected:
   virtual void start() {}
+  virtual void tick() {}
   ServiceManager *getParent() { return parent; }
 
  private:

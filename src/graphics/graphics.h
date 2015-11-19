@@ -12,7 +12,7 @@ namespace phrix {
 		};
 
 		class GraphicsService : public phrix::game::Service {
-
+			void tick() override;
 		};
 	}
 }
