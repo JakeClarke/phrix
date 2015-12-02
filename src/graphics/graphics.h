@@ -3,7 +3,6 @@
 
 #include "renderer\renderer.h"
 #include "servicemanager.h"
-#include "graphicsscene.h"
 
 namespace phrix {
 	namespace graphics {
