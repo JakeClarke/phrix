@@ -10,12 +10,13 @@ namespace phrix {
 				class DirectxRenderer : public Renderer {
 				public:
 					// Inherited via Renderer
-					virtual bool init() override;
-					virtual std::unique_ptr<RendererContext> getContext(RendererContextType) override;
-					virtual void present() override;
-					virtual void clear(Color c) override;
+					bool init() override;
+					void present() override;
 				private:
 					void loadContent();
+
+					// Inherited via Renderer
+					void renderScene(Scene * s) override;
 				};
 
 				Renderer* getRenderer();

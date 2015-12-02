@@ -163,24 +163,18 @@ bool DirectxRenderer::init()
 	return true;
 }
 
-std::unique_ptr<RendererContext> DirectxRenderer::getContext(RendererContextType)
-{
-	return std::unique_ptr<RendererContext>();
-}
-
 void DirectxRenderer::present()
 {
 	g_swapChain->Present(0, 0);
 }
 
-void phrix::graphics::renderer::directx::DirectxRenderer::clear(Color c)
-{
-	//g_pImmediateContext->ClearRenderTargetView(g_pmainRenderTarget, (float*)&c);
-}
-
 void phrix::graphics::renderer::directx::DirectxRenderer::loadContent()
 {
 	
+}
+
+void phrix::graphics::renderer::directx::DirectxRenderer::renderScene(Scene * s)
+{
 }
 
 Renderer * phrix::graphics::renderer::directx::getRenderer()

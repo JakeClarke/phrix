@@ -14,7 +14,11 @@ namespace phrix {
 		return a > b ? a : b;
 	}
 
-
+	template<typename t>
+	t lerp(t a, t b, t v) {
+		auto d = b - a;
+		return a + (d * v);
+	}
 }
 
 

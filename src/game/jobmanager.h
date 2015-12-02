@@ -18,12 +18,15 @@ class Job {
   friend class JobManager;
 public:
 	virtual ~Job() {}
+	void addDependancy(Job *);
+	JobManager * getParent() {
+		return parent;
+	}
  protected:
   Job() : locked(true) {}
   Job(bool locked) : locked(locked) {}
 
   virtual void run() = 0;
-  void addDependancy(Job *);
   
  private:
  	JobManager * parent;

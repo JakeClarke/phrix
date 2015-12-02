@@ -15,6 +15,15 @@ namespace phrix {
 			Entity * getParent() {
 				return m_parent;
 			}
+
+			bool isEnabled() {
+				return m_enabled;
+			}
+
+			void setEnabled(bool enabled) {
+				m_enabled = enabled;
+			}
+
 		protected:
 			virtual void onStart() {}
 			virtual void onRender() {}
@@ -22,7 +31,11 @@ namespace phrix {
 			virtual void onDestroy() {}
 		private:
 			Entity * m_parent;
+			
+			bool m_enabled;
 		};
+
+		class Scene;
 
 		class Entity
 		{
@@ -37,6 +50,7 @@ namespace phrix {
 			~Entity() {};
 		private:
 			std::vector<std::unique_ptr<EntityComponent>> components;
+			Scene * m_scene;
 		};
 	}
 }

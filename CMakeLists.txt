@@ -12,6 +12,6 @@ include_directories ("${PROJECT_SOURCE_DIR}/src/game")
 add_subdirectory (src/game)
 add_subdirectory (src/graphics)
 
-add_executable(phrix src/phrix.cc)
+add_executable(phrix src/phrix.cc src/vector.h src/mat.h src/math.h)
 target_compile_features(phrix PRIVATE cxx_lambdas)
 target_link_libraries (phrix game graphics)

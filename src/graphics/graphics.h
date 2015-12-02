@@ -3,6 +3,7 @@
 
 #include "renderer\renderer.h"
 #include "servicemanager.h"
+#include "graphicsscene.h"
 
 namespace phrix {
 	namespace graphics {
@@ -13,6 +14,8 @@ namespace phrix {
 
 		class GraphicsService : public phrix::game::Service {
 			void tick() override;
+			void start() override;
+			std::unique_ptr<renderer::Renderer> renderer;
 		};
 	}
 }

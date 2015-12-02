@@ -1,30 +1,14 @@
 #ifndef _H_SRC_GAME_SERVICE
 #define _H_SRC_GAME_SERVICE
 
+#include "game.h"
+#include "service.h"
 #include <memory>
 #include <map>
 #include <typeindex>
 
 namespace phrix {
 namespace game {
-
-class ServiceManager;
-
-class Service {
-  friend class ServiceManager;
-
- public:
-	 virtual ~Service() {};
-
- protected:
-  virtual void start() {}
-  virtual void tick() {}
-  ServiceManager *getParent() { return parent; }
-
- private:
-  void setParent(ServiceManager *s) { parent = s; }
-  ServiceManager *parent;
-};
 
 class Game;
 
@@ -52,6 +36,10 @@ class ServiceManager {
       serv->start();
     }
     return static_cast<t *>(serv.get());
+  }
+
+  Game* getParent() {
+	  return parent;
   }
 
  private:

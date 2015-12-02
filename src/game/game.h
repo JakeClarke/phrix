@@ -3,7 +3,6 @@
 
 #include "gamecommon.h"
 #include "servicemanager.h"
-#include "../assetmanager/assetmanager.h"
 #include "jobmanager.h"
 #include "scene.h"
 
@@ -14,6 +13,8 @@
 
 namespace phrix {
 namespace game {
+	class JobManager;
+	class ServiceManager;
 
 class Game {
  public:
@@ -22,15 +23,12 @@ class Game {
  	
   void run();
   void exit();
-  ServiceManager *Services() {
-  	return &services;
-  }
 
  private:
   std::chrono::high_resolution_clock::time_point startTime;
 
-  JobManager jobManager;
-  ServiceManager services;
+  std::unique_ptr<JobManager> jobManager;
+  std::unique_ptr<ServiceManager> services;
 
   std::unique_ptr<Scene> scene;
 

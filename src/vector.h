@@ -60,6 +60,18 @@ namespace phrix {
 			return{ 0.0f, 1.0f, 0.0f };
 		}
 
+		Vector3 operator*(t a) {
+			return{ X * a, Y * a, Z * a };
+		}
+
+		Vector3 operator*(double d) {
+			return{ X * d, Y * d, Z * d, W * d };
+		}
+
+		static Vector3 one() {
+			return{ 1, 1, 1 };
+		}
+
 		static Vector3 max(Vector3 a, Vector3 b) {
 			return{
 				phrix::max(a.X, b.X),
@@ -73,6 +85,14 @@ namespace phrix {
 				phrix::min(a.X, b.X),
 				phrix::min(a.Y, b.Y),
 				phrix::min(a.Z, a.Z)
+			};
+		}
+
+		static Vector3 lerp(Vector3 a, Vector3 b, t v) {
+			return{
+				phrix::lerp(a.X, b.X, v),
+				phrix::lerp(a.Y, b.Y, v),
+				phrix::lerp(a.Z, b.Z, v)
 			};
 		}
 
@@ -103,8 +123,16 @@ namespace phrix {
 			return{ X * a, Y * a, Z * a, W * a };
 		}
 
+		Vector4 operator*(double d) {
+			return{ X * d, Y * d, Z * d, W * d};
+		}
+
 		static Vector4 up() {
 			return{ 0.0f, 1.0f, 0.0f. 0.0f };
+		}
+
+		static Vector4 one() {
+			return{ 1,1,1,1 };
 		}
 
 		static Vector4 max(Vector4 a, Vector4 b) {
@@ -122,6 +150,15 @@ namespace phrix {
 				phrix::min(a.Y, b.Y),
 				phrix::min(a.Z, a.Z),
 				phrix::min(a.W, b.W)
+			};
+		}
+
+		static Vector4 lerp(Vector4 a, Vector4 b, t v) {
+			return{
+				phrix::lerp(a.X, b.X, v),
+				phrix::lerp(a.Y, b.Y, v),
+				phrix::lerp(a.Z, b.Z, v),
+				phrix::lerp(a.W, b.W, v)
 			};
 		}
 
