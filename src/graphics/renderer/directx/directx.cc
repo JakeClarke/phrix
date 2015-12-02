@@ -2,10 +2,12 @@
 #include "SDL.h"
 #include "SDL_syswm.h"
 #include "d3dx12.h"
+#include "dxresourcefactory.h"
 #include <DXGI1_4.h>
 #include <iostream>
 #include <wrl\client.h>
 
+using namespace phrix::graphics;
 using namespace phrix::graphics::renderer::directx;
 using namespace phrix::graphics::renderer;
 using namespace Microsoft::WRL;
@@ -87,10 +89,16 @@ bool DirectxRenderer::init()
 	g_window = SDL_CreateWindow("phrix", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h, 0);
 	SDL_SysWMinfo info;
 
+	if (g_window == nullptr) {
+		std::cerr << "failed to create window: " << SDL_GetError() << std::endl;
+		throw;
+	}
+
 	SDL_VERSION(&info.version);
 
 	if (SDL_GetWindowWMInfo(g_window, &info) == SDL_FALSE) {
 		std::cerr << "Failed to get window info: " << SDL_GetError();
+		throw;
 	}
 
 #if defined(_DEBUG)
@@ -168,13 +176,18 @@ void DirectxRenderer::present()
 	g_swapChain->Present(0, 0);
 }
 
-void phrix::graphics::renderer::directx::DirectxRenderer::loadContent()
+void DirectxRenderer::loadContent()
 {
 	
 }
 
-void phrix::graphics::renderer::directx::DirectxRenderer::renderScene(Scene * s)
+void DirectxRenderer::renderScene(Scene * s)
 {
+}
+
+std::unique_ptr<GraphicsResourceFactory> DirectxRenderer::getResourceFactory()
+{
+	return std::unique_ptr<GraphicsResourceFactory>(new DxGraphicsResourceFactory());
 }
 
 Renderer * phrix::graphics::renderer::directx::getRenderer()

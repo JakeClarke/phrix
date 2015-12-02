@@ -12,11 +12,10 @@ namespace phrix {
 					// Inherited via Renderer
 					bool init() override;
 					void present() override;
+					void renderScene(Scene * s) override;
+					std::unique_ptr<GraphicsResourceFactory> getResourceFactory() override;
 				private:
 					void loadContent();
-
-					// Inherited via Renderer
-					void renderScene(Scene * s) override;
 				};
 
 				Renderer* getRenderer();

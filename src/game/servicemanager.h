@@ -19,19 +19,19 @@ class ServiceManager {
   void start();
 
   template <class t>
-  t get() {
+  t* get() {
     std::unique_ptr<Service> &serv = services[typeid(t)];
     return static_cast<t *>(serv.get());
   }
 
   template <class t>
-  t create() {
+  t* create() {
     std::unique_ptr<Service> &serv = services[typeid(t)];
     if (serv) {
       return static_cast<t *>(serv.get());
     }
     serv = std::unique_ptr<Service>(new t());
-    serv->setParent(this);
+    serv->parent = this;
     if (started) {
       serv->start();
     }

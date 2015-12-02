@@ -10,6 +10,7 @@ constexpr std::chrono::duration<double, std::milli> targetFrameDuration =
     (std::chrono::milliseconds(1000)) / 60.0;
 
 Game::Game() : services(new ServiceManager(this)), running(false), exiting(false), jobManager(new JobManager(4)) {
+	services->create<graphics::GraphicsService>();
 }
 
 Game::~Game() { exit(); }
@@ -23,9 +24,6 @@ void Game::run() {
   exiting = false;
   running = true;
 
-  jobManager->start();
-  services->start();
-
   if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
     std::cerr << "Unable to initialize SDL: " << SDL_GetError() << std::endl;
     return;
@@ -38,6 +36,9 @@ void Game::run() {
   std::cout << "SDL compiled version" << int(compiled.major) << "." << int(compiled.minor) << "." << int(compiled.patch) << std::endl;
   SDL_GetVersion(&linked);
   std::cout << "SDL linked version" << int(linked.major) << "." << int(linked.minor) << "." << int(linked.patch) << std::endl;
+
+  jobManager->start();
+  services->start();
 
   while (!exiting) {
     std::cout << "frame start" << std::endl;

@@ -8,10 +8,6 @@
 namespace phrix {
 	namespace graphics {
 
-		struct Color {
-			float Red, Greeen, Blue, Alpha;
-		};
-
 		class GraphicsService : public phrix::game::Service {
 			void tick() override;
 			void start() override;
