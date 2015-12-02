@@ -3,16 +3,19 @@
 
 #include "transforms.h"
 #include <memory>
-#include <vector>
+#include <map>
+#include <typeindex>
 
 namespace phrix {
 	namespace game {
 		class Entity;
+		class Scene;
 
 		class EntityComponent {
 			friend class Entity;
+			friend class Scene;
 		public:
-			Entity * getParent() {
+			Entity * getEntity() {
 				return m_parent;
 			}
 
@@ -35,22 +38,42 @@ namespace phrix {
 			bool m_enabled;
 		};
 
-		class Scene;
-
 		class Entity
 		{
+			friend class Scene;
 		public:
 			Transforms transforms;
 
-			void AddComponent(std::unique_ptr<EntityComponent> &c) {
-				c->m_parent = this;
-				this->components.push_back(std::move(c));
+			template<class c>
+			c* addComponent() {
+				std::unique_ptr<EntityComponent> &comp = m_components[typeid(t)];
+				if (comp) {
+					return static_cast<t *>(comp.get());
+				}
+				comp = std::unique_ptr<EntityComponent>(new t());
+				comp->m_parent = this;
+				if (m_started) {
+					comp->onStart();
+				}
+				return static_cast<t *>(comp.get());
+			}
+
+			template<class t>
+			t* getComponent() {
+				std::unique_ptr<EntityComponent> &comp = m_components[typeid(t)];
+				return static_cast<t *>(comp.get());
+			}
+
+			template<class t>
+			bool hasComponent() {
+				return getComponent<t>() != nullptr;
 			}
 
 			~Entity() {};
 		private:
-			std::vector<std::unique_ptr<EntityComponent>> components;
+			std::map<std::type_index, std::unique_ptr<EntityComponent>> m_components;
 			Scene * m_scene;
+			bool m_started;
 		};
 	}
 }

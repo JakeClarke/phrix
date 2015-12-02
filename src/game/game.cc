@@ -9,7 +9,7 @@ using namespace phrix::game;
 constexpr std::chrono::duration<double, std::milli> targetFrameDuration =
     (std::chrono::milliseconds(1000)) / 60.0;
 
-Game::Game() : services(new ServiceManager(this)), running(false), exiting(false), jobManager(new JobManager(4)) {
+Game::Game() : services(new ServiceManager(this)), running(false), exiting(false), jobManager(new JobManager(4)), scene(new Scene(this)) {
 	services->create<graphics::GraphicsService>();
 }
 
@@ -50,6 +50,13 @@ void Game::run() {
           break;
       }
     }
+	if (!scene)
+	{
+		std::cerr << "No scene!" << std::endl;
+	}
+	else {
+		scene->update();
+	}
 	jobManager->wait();
     // do the rendering.
     std::cout << "frame end" << std::endl;
