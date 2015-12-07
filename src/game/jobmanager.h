@@ -54,7 +54,6 @@ namespace phrix {
 
 		private:
 			std::unique_ptr<Job> popJob();
-			void sleepIfUnneeded();
 			void notifyBlocked();
 			void notifyUnblocked();
 			std::thread createThread();
@@ -69,11 +68,6 @@ namespace phrix {
 			std::mutex jobQueueMutex;
 			/// cv to notify threads waiting on new jobs.
 			std::condition_variable jobCv;
-			/// mutex for threads that need to sleep to wait on.
-			std::mutex workerSleep;
-			/// cv to wait and notify sleeping threads.
-			std::condition_variable workerThreadSleepCv;
-
 			/// main thread cv
 			std::condition_variable mainThreadSleepCv;
 
@@ -84,13 +78,9 @@ namespace phrix {
 
 			/// max number of threads that this job manager suppots.
 			int maxThreads;
-			/// suggested number of threads that should be running at any time.
-			std::atomic<int> suggestedNumThreads;
-			/// current number of threads that are seeking work.
-			std::atomic<int> activeThreads;
 
 			std::unique_ptr<std::thread[]> workerthreads;
-			std::atomic<int> pending;
+			std::atomic<int> m_active;
 			bool started;
 			bool exiting;
 			std::atomic<bool> processing;

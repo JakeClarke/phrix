@@ -6,18 +6,15 @@
 
 using namespace phrix::game;
 
-int maxJobs = 1024;
-
 JobManager::JobManager(Game* game)
 	: m_game(game),
 	m_head(0),
 	m_tail(0),
 	minThreads(std::thread::hardware_concurrency()),
 	maxThreads(2 * minThreads),
-	suggestedNumThreads(minThreads),
 	started(false),
 	exiting(false),
-	pending(0),
+	m_active(0),
 	processing(false) {}
 
 void JobManager::sched(std::unique_ptr<Job>& job) {
@@ -38,12 +35,14 @@ void JobManager::sched(std::unique_ptr<Job>& job) {
 void JobManager::start() {
 	if (!started) {
 		started = true;
-		activeThreads = 0;
-		suggestedNumThreads = minThreads;
+		std::unique_lock<std::mutex> jl(jobQueueMutex);
 		workerthreads = std::unique_ptr<std::thread[]>(new std::thread[maxThreads]);
 		for (int i = 0; i < maxThreads; ++i) {
 			workerthreads[i] = createThread();
 		}
+		mainThreadSleepCv.wait(jl, [this]() {
+			return m_active == 0;
+		});
 	}
 }
 
@@ -52,32 +51,10 @@ size_t phrix::game::JobManager::numJobs()
 	return m_head >= m_tail ? m_head - m_tail : (m_head + maxJobs) - m_tail;
 }
 
-void JobManager::sleepIfUnneeded() {
-	while (true) {
-		int active = activeThreads;
-		if (active > suggestedNumThreads) {
-			std::cout << active << "/" << suggestedNumThreads << std::endl;
-			if (activeThreads.compare_exchange_strong(active, active - 1)) {
-				--pending;
-				std::unique_lock<std::mutex> l(workerSleep);
-				workerThreadSleepCv.wait(
-					l, [this]() { return activeThreads < suggestedNumThreads || exiting; });
-				++activeThreads;
-				++pending;
-			}
-		}
-		else {
-			return;
-		}
-	}
-}
-
 std::thread JobManager::createThread() {
-	++activeThreads;
-	++pending;
+	++m_active;
 	return std::thread([this]() {
 		while (!exiting) {
-			sleepIfUnneeded();
 			auto job = popJob();
 			assert(job || exiting);
 			if (job) {
@@ -87,15 +64,15 @@ std::thread JobManager::createThread() {
 				}
 				else {
 					// we don't want to block the main thread for long jobs.
-					--pending;
+					--m_active;
+					mainThreadSleepCv.notify_one();
 					job->run();
-					++pending;
+					++m_active;
 				}
 				job->signalDependant();
 			}
 		}
-		--pending;
-		--activeThreads;
+		--m_active;
 	});
 }
 
@@ -103,19 +80,11 @@ void JobManager::wait() {
 	processing = true;
 
 	std::unique_lock<std::mutex> jl(jobQueueMutex);
-	if (numJobs() > 0)
-	{
-		jobCv.notify_all();
-		if (mainThreadSleepCv.wait_for(jl, std::chrono::seconds(1), [this]() {
-			return numJobs() == 0 && pending == 0;
-		})) {
-
-		}
-		else {
-			std::cerr << "Main thread over slept!" << std::endl;
-		}
-	}
-
+	jobCv.notify_all();
+	mainThreadSleepCv.wait(jl, [this]() {
+		std::cout << "Main thread test." << std::endl;
+		return numJobs() == 0 && m_active == 0;
+	});
 	processing = false;
 }
 
@@ -127,9 +96,12 @@ std::unique_ptr<Job> JobManager::popJob() {
 
 		// Little bit messy doing this first but i don't want to reaquire the lock.
 		if (numJobs() == 0) {
-			--pending;
-			jobCv.wait(jl, [this]() { return (processing && numJobs() > 0) || exiting; });
-			++pending;
+			--m_active;
+			if (m_active == 0) {
+				mainThreadSleepCv.notify_one();
+			}
+			jobCv.wait(jl, [this]() { return (processing && numJobs() > 0 && m_active < minThreads) || exiting; });
+			++m_active;
 		}
 
 		if (numJobs() > 0 && !exiting) {  // frame locked jobs second.
@@ -141,23 +113,18 @@ std::unique_ptr<Job> JobManager::popJob() {
 }
 
 void JobManager::notifyBlocked() {
-	if (suggestedNumThreads < maxThreads) {
-		++suggestedNumThreads;
-		workerThreadSleepCv.notify_one();
-	}
+	--m_active;
+	jobCv.notify_one();
 }
 
 void JobManager::notifyUnblocked() {
-	if (suggestedNumThreads > minThreads) {
-		--suggestedNumThreads;
-	}
+	++m_active;
 }
 
 JobManager::~JobManager() {
 	if (started) {
 		exiting = true;
 		jobCv.notify_all();
-		workerThreadSleepCv.notify_all();
 		for (int i = 0; i < maxThreads; ++i) {
 			workerthreads[i].join();
 		}
