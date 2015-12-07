@@ -3,12 +3,11 @@
 
 #include "../graphicsresourcefactory.h"
 #include "../color.h"
+#include "../game/scene.h"
 #include <memory>
 
 namespace phrix {
 	namespace graphics {
-		class Scene;
-
 		namespace renderer {
 
 			enum RendererContextType {
@@ -27,7 +26,7 @@ namespace phrix {
 			public:
 				virtual bool init() = 0;
 				virtual void present() = 0;
-				virtual void renderScene(Scene *s) = 0;
+				virtual void renderGame(phrix::game::Game *g) = 0;
 				virtual std::unique_ptr<GraphicsResourceFactory> getResourceFactory() = 0;
 			};
 

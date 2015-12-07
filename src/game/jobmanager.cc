@@ -22,6 +22,7 @@ JobManager::JobManager(Game* game)
 
 void JobManager::sched(std::unique_ptr<Job>& job) {
 	assert(job);
+	job->parent = this;
 	std::unique_lock<std::mutex> jl(jobQueueMutex);
 	if (numJobs() < maxJobs)
 	{
@@ -105,9 +106,14 @@ void JobManager::wait() {
 	if (numJobs() > 0)
 	{
 		jobCv.notify_all();
-		mainThreadSleepCv.wait(jl, [this]() {
+		if (mainThreadSleepCv.wait_for(jl, std::chrono::seconds(1), [this]() {
 			return numJobs() == 0 && pending == 0;
-		});
+		})) {
+
+		}
+		else {
+			std::cerr << "Main thread over slept!" << std::endl;
+		}
 	}
 
 	processing = false;
@@ -122,10 +128,6 @@ std::unique_ptr<Job> JobManager::popJob() {
 		// Little bit messy doing this first but i don't want to reaquire the lock.
 		if (numJobs() == 0) {
 			--pending;
-			if (pending == 0)
-			{
-				mainThreadSleepCv.notify_one();
-			}
 			jobCv.wait(jl, [this]() { return (processing && numJobs() > 0) || exiting; });
 			++pending;
 		}

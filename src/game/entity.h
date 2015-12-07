@@ -44,8 +44,8 @@ namespace phrix {
 		public:
 			Transforms transforms;
 
-			template<class c>
-			c* addComponent() {
+			template<class t>
+			t* addComponent() {
 				std::unique_ptr<EntityComponent> &comp = m_components[typeid(t)];
 				if (comp) {
 					return static_cast<t *>(comp.get());

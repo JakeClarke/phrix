@@ -3,7 +3,7 @@
 
 using namespace phrix::game;
 
-Scene::Scene(Game *game) :parent(game) {
+Scene::Scene(Game *game) :parent(game), m_mainCamera(nullptr) {
 }
 void Scene::add(std::unique_ptr<Entity> &e) {
 	if (this->m_mainCamera == nullptr && e->hasComponent<Camera>()) {
@@ -13,6 +13,18 @@ void Scene::add(std::unique_ptr<Entity> &e) {
 }
 
 void Scene::destory(Entity *e) {}
+
+std::vector<Camera*> phrix::game::Scene::getCameras()
+{
+	std::vector<Camera*> res;
+	std::for_each(m_entities.begin(), m_entities.end(), [&res](std::unique_ptr<Entity> &e) {
+		auto cam = e->getComponent<Camera>();
+		if (cam) {
+			res.push_back(cam);
+		}
+	});
+	return res;
+}
 
 void Scene::update()
 {

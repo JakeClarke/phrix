@@ -1,11 +1,18 @@
 #include "directx.h"
+
+#include "dxresourcefactory.h"
+#include "jobmanager.h"
+#include "game.h"
+#include "camera.h"
+
+// Library incudes
+#include "d3dx12.h"
 #include "SDL.h"
 #include "SDL_syswm.h"
-#include "d3dx12.h"
-#include "dxresourcefactory.h"
 #include <DXGI1_4.h>
 #include <iostream>
 #include <wrl\client.h>
+#include <algorithm>
 
 using namespace phrix::graphics;
 using namespace phrix::graphics::renderer::directx;
@@ -27,11 +34,14 @@ ComPtr<ID3D12CommandQueue> g_commandQueue;
 ComPtr<ID3D12RootSignature> g_rootSignature;
 ComPtr<ID3D12DescriptorHeap> g_rtvHeap;
 ComPtr<ID3D12Resource> g_renderTargets[frameCount];
-ComPtr<ID3D12CommandAllocator> g_commandAllocator;
+ComPtr<ID3D12CommandAllocator> g_commandAllocator[frameCount];
 ComPtr<ID3D12RootSignature> g_graphicsRoot;
 
 ComPtr<ID3DBlob> g_defaultVertexShader;
 ComPtr<ID3DBlob> g_defaultPixelShader;
+
+ComPtr<ID3D12Fence> g_fence;
+HANDLE g_fenceEvent;
 
 UINT g_rtvDescriptorHeapSize;
 
@@ -40,8 +50,8 @@ SDL_Window *g_window;
 bool inited = false;
 
 
-int frameIndex;
-
+int g_frameIndex;
+uint64_t g_fenceValue = 0;
 }
 
 void ThrowIfFailed(HRESULT res) {
@@ -143,7 +153,7 @@ bool DirectxRenderer::init()
 	ThrowIfFailed(swapChain.As(&g_swapChain));
 
 	ThrowIfFailed(factory->MakeWindowAssociation(info.info.win.window, DXGI_MWA_NO_ALT_ENTER));
-	frameIndex = g_swapChain->GetCurrentBackBufferIndex();
+	g_frameIndex = g_swapChain->GetCurrentBackBufferIndex();
 
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
@@ -165,7 +175,11 @@ bool DirectxRenderer::init()
 		}
 	}
 
-	ThrowIfFailed(g_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator)));
+	ThrowIfFailed(g_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator[0])));
+	ThrowIfFailed(g_d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator[1])));
+
+	g_d3dDevice->CreateFence(g_fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_fence));
+	g_fenceEvent = CreateEventEx(nullptr, FALSE, FALSE, EVENT_ALL_ACCESS);
 
 	inited = true;
 	return true;
@@ -173,7 +187,9 @@ bool DirectxRenderer::init()
 
 void DirectxRenderer::present()
 {
+	waitForGpuComplete();
 	g_swapChain->Present(0, 0);
+	g_frameIndex = g_swapChain->GetCurrentBackBufferIndex();
 }
 
 void DirectxRenderer::loadContent()
@@ -181,8 +197,110 @@ void DirectxRenderer::loadContent()
 	
 }
 
-void DirectxRenderer::renderScene(Scene * s)
+
+class DxEndFrameJob : public phrix::game::Job {
+public:
+	void addCommandlist(ID3D12CommandList * cl) {
+		std::lock_guard<std::mutex> l(m_listMutex);
+		m_commandLists.push_back(cl);
+	}
+
+private:
+	std::vector<ComPtr<ID3D12CommandList>> m_commandLists;
+
+	void run() override
+	{
+		std::lock_guard<std::mutex> l(m_listMutex);
+		std::unique_ptr<ID3D12CommandList*[]> submit(new ID3D12CommandList*[m_commandLists.size()]);
+		for (size_t i = 0; i < m_commandLists.size(); i++)
+		{
+			submit[i] = m_commandLists[i].Get();
+		}
+
+		g_commandQueue->ExecuteCommandLists(m_commandLists.size(), submit.get());
+		g_renderer.present();
+	}
+
+	std::mutex m_listMutex;
+};
+
+class DxRenderCameraJob : public phrix::game::Job {
+public:
+	DxRenderCameraJob(phrix::game::Camera * camera, DxEndFrameJob* ej) : Job(), m_camera(camera), m_endj(ej) {}
+private:
+	void run() override
+	{
+		ComPtr<ID3D12GraphicsCommandList> cmdList;
+		ThrowIfFailed(g_d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_commandAllocator[g_frameIndex].Get(), nullptr, IID_PPV_ARGS(&cmdList)));
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv;
+		if (m_camera->target) {
+			// Get the render targets CPU handle then then set it to the RTV
+		}
+		else {
+			// get the pack buffers rtv then use it to do the rendering
+
+			rtv = CD3DX12_CPU_DESCRIPTOR_HANDLE(g_rtvHeap->GetCPUDescriptorHandleForHeapStart(), g_frameIndex, g_rtvDescriptorHeapSize);
+		}
+		cmdList->OMSetRenderTargets(1, &rtv, 0, nullptr);
+		cmdList->ClearRenderTargetView(rtv, reinterpret_cast<float *>(&m_camera->clearColor), 0, nullptr);
+		/* TODO:
+		Iterate through each of the pipeline state objects attached to the renderables.
+		Set them then call render on them.
+		*/
+
+		// This command list is finished, it will automatically be submitted when the end frame job has been completed.
+		cmdList->Close();
+		
+		m_endj->addCommandlist(cmdList.Get());
+	}
+	phrix::game::Camera * m_camera;
+	DxEndFrameJob * m_endj;
+};
+
+void DirectxRenderer::renderGame(phrix::game::Game *g)
 {
+	ThrowIfFailed(g_commandAllocator[g_frameIndex]->Reset());
+
+	auto scene = g->getScene();
+	auto cameras = scene->getCameras();
+	auto jobManager = g->getJobManager();
+	std::unique_ptr<phrix::game::Job> endj(new DxEndFrameJob());
+	auto ej = static_cast<DxEndFrameJob*>(endj.get());
+
+	if (cameras.size() > 0) {
+		auto mainCamera = scene->getMainCamera();
+		std::unique_ptr<phrix::game::Job> mainRenderj(new DxRenderCameraJob(mainCamera,ej));
+		
+		// Itterate through each of the cameras and add a job for them.
+		std::for_each(cameras.begin(), cameras.end(), [jobManager, &mainRenderj, mainCamera, ej](phrix::game::Camera * c) {
+			if (c != mainCamera)
+			{
+				std::unique_ptr<phrix::game::Job> cj(new DxRenderCameraJob(c, ej));
+				// main camera should be done last.
+				mainRenderj->addDependancy(cj.get());
+				jobManager->sched(cj);
+			}
+		});
+
+		endj->addDependancy(mainRenderj.get());
+		jobManager->sched(mainRenderj);
+	} 
+	else {
+		throw;
+	}
+
+	jobManager->sched(endj);
+}
+
+void phrix::graphics::renderer::directx::DirectxRenderer::waitForGpuComplete()
+{
+	// not the most effeciant
+	auto waitValue = g_fenceValue;
+	g_fenceValue++;
+	g_commandQueue->Signal(g_fence.Get(), waitValue);
+
+	ThrowIfFailed(g_fence->SetEventOnCompletion(waitValue, g_fenceEvent));
+	WaitForSingleObject(g_fenceEvent, INFINITE);
 }
 
 std::unique_ptr<GraphicsResourceFactory> DirectxRenderer::getResourceFactory()

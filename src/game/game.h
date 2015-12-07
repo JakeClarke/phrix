@@ -12,30 +12,37 @@
 #include <map>
 
 namespace phrix {
-namespace game {
-	class JobManager;
-	class ServiceManager;
+	namespace game {
+		class JobManager;
+		class ServiceManager;
 
-class Game {
- public:
- 	Game();
- 	~Game();
- 	
-  void run();
-  void exit();
+		class Game {
+		public:
+			Game();
+			~Game();
 
- private:
-  std::chrono::high_resolution_clock::time_point startTime;
+			void run();
+			void exit();
+			JobManager* getJobManager() {
+				return jobManager.get();
+			}
 
-  std::unique_ptr<JobManager> jobManager;
-  std::unique_ptr<ServiceManager> services;
+			Scene * getScene() {
+				return scene.get();
+			}
 
-  std::unique_ptr<Scene> scene;
+		private:
+			std::chrono::high_resolution_clock::time_point startTime;
 
-  bool running;
-  bool exiting;
-};
-}
+			std::unique_ptr<JobManager> jobManager;
+			std::unique_ptr<ServiceManager> services;
+
+			std::unique_ptr<Scene> scene;
+
+			bool running;
+			bool exiting;
+		};
+	}
 }
 
 #endif

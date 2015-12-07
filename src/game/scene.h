@@ -25,6 +25,8 @@ class Scene {
 	  return m_mainCamera;
   }
 
+  std::vector<Camera*> getCameras();
+
   void update();
 
   ~Scene();

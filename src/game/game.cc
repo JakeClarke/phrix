@@ -1,15 +1,18 @@
 #include "game.h"
 
-#include <iostream>
 #include "SDL.h"
 #include "../graphics/graphics.h"
 
+#include <iostream>
+#include <cassert>
+
 using namespace phrix::game;
+
 
 constexpr std::chrono::duration<double, std::milli> targetFrameDuration =
     (std::chrono::milliseconds(1000)) / 60.0;
 
-Game::Game() : services(new ServiceManager(this)), running(false), exiting(false), jobManager(new JobManager(4)), scene(new Scene(this)) {
+Game::Game() : services(new ServiceManager(this)), running(false), exiting(false), jobManager(new JobManager(this)), scene(new Scene(this)) {
 	services->create<graphics::GraphicsService>();
 }
 
@@ -57,6 +60,7 @@ void Game::run() {
 	else {
 		scene->update();
 	}
+	services->tick();
 	jobManager->wait();
     // do the rendering.
     std::cout << "frame end" << std::endl;

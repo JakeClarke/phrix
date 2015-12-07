@@ -17,6 +17,7 @@ class ServiceManager {
   ServiceManager(Game *p);
 
   void start();
+  void tick();
 
   template <class t>
   t* get() {
