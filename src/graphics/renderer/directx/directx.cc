@@ -241,12 +241,16 @@ private:
 
 			rtv = CD3DX12_CPU_DESCRIPTOR_HANDLE(g_rtvHeap->GetCPUDescriptorHandleForHeapStart(), g_frameIndex, g_rtvDescriptorHeapSize);
 		}
+		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(g_renderTargets[g_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 		cmdList->OMSetRenderTargets(1, &rtv, 0, nullptr);
 		cmdList->ClearRenderTargetView(rtv, reinterpret_cast<float *>(&m_camera->clearColor), 0, nullptr);
 		/* TODO:
 		Iterate through each of the pipeline state objects attached to the renderables.
 		Set them then call render on them.
 		*/
+
+
+		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(g_renderTargets[g_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 		// This command list is finished, it will automatically be submitted when the end frame job has been completed.
 		cmdList->Close();
